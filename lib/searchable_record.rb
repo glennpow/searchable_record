@@ -60,7 +60,7 @@ module SearchableRecord
       fields &= options[:only] if options[:only]
       fields -= options[:except] if options[:except]
 
-      unless options[:case] == :sensitive
+      unless options[:case_sensitive]
         text.downcase!
         fields.map! { |field| "lower(#{field})" }
       end
@@ -76,13 +76,23 @@ module SearchableRecord
       includes << options[:include] if options[:include]
       includes.flatten.uniq
 
-      search_options = { :include => includes.any? ? includes : nil,
-                         :conditions => conditions,
-                         :page => options[:page],
-                         :per_page => options[:per_page],
-                         :order => options[:order] }
+      if self.respond_to?(:paginate)
+        search_options = { :include => includes.any? ? includes : nil,
+                           :conditions => conditions,
+                           :page => options[:page],
+                           :per_page => options[:per_page],
+                           :order => options[:order] }
     
-      paginate(search_options)
+        paginate(search_options)
+      else
+        search_options = { :include => includes.any? ? includes : nil,
+                           :conditions => conditions,
+                           :offset => options[:offset],
+                           :limit => options[:limit],
+                           :order => options[:order] }
+    
+        find(search_options)
+      end
     end
 
 

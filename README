@@ -1,50 +1,69 @@
 SearchableRecord
 ================
 
-# Adds search method to ActiveRecord::Base.
-# The query language supports the operators
-# (), not, and, or
-# Precedence in that order.
-# - is an alias for not.
-# If no operator is present, and is assumed.
-# Lastly, anything within double quotes is treated as 
-# a single search term.
-#
-# For example,
-#  ruby rails => records where both ruby and rails appear
-#  "ruby on rails" => records where "ruby on rails" appears
-#  ruby or rails => records where ruby or rails (or both) appears
-#  ruby or chunky bacon => records where ruby appears or both chunky and bacon appear
-#  not dead or alive => records where alive appears or dead is absent
-#  -(ruby or rails) => records where neither ruby nor rails appears
-#  (ruby or rails) -"ruby on rails" => records where ruby or rails appears but not the phrase "ruby on rails" 
-#
-# Query feature by Nate McNamara (nate@mcnamara.net)
-# Support for second-order associations by Moritz Heidkamp
-# Original TextSearch library by Duane Johnson.
+Adds search method to ActiveRecord::Base.
+The query language supports the operators
+(), not, and, or
+Precedence in that order.
+- is an alias for not.
+If no operator is present, and is assumed.
+Lastly, anything within double quotes is treated as 
+a single search term.
 
-    # Search the model's text and varchar fields
-    #   text = a set of words to search for
-    #   :only => an array of fields in which to search for the text;
-    #     default is 'all text or string columns'
-    #   :except => an array of fields to exclude
-    #     from the default searchable columns
-    #   :case => :sensitive or :insensitive
-    #   :search_include => an array of tables to include in the joins.  Fields that
-    #     have searchable text will automatically be included in the default
-    #     set of :search_columns.
-    #   :include => an array of tables to include in the joins, but only
-    #     for joining. (Searchable fields will not automatically be included.)
-    #   :conditions => a string of additional conditions (constraints)
-    #   :page => paging offset (integer)
-    #   :per_page => number of rows to return (integer)
-    #   :order => sort order (order_by SQL snippet)
+For example,
+ ruby rails => records where both ruby and rails appear
+ "ruby on rails" => records where "ruby on rails" appears
+ ruby or rails => records where ruby or rails (or both) appears
+ ruby or chunky bacon => records where ruby appears or both chunky and bacon appear
+ not dead or alive => records where alive appears or dead is absent
+ -(ruby or rails) => records where neither ruby nor rails appears
+ (ruby or rails) -"ruby on rails" => records where ruby or rails appears but not the phrase "ruby on rails"
+ 
+This search implementation also utilizes the will-paginate plugin, but will still work
+if it is not present as well.  Note the different paging params used in each case.
+
+Query feature by Nate McNamara (nate@mcnamara.net)
+Support for second-order associations by Moritz Heidkamp
+Original TextSearch library by Duane Johnson.
+Pagination support and other enhancements by Glenn Powell
+
+The class method 'search' searches the model's text and varchar fields
+  text = a set of words to search for
+  :only => an array of fields in which to search for the text;
+    default is 'all text or string columns'
+  :except => an array of fields to exclude
+    from the default searchable columns
+  :case_sensitive => true or false (default) (although MySQL LIKE is case-insensitive by default anyways)
+  :search_include => an array of tables to include in the joins.  Fields that
+    have searchable text will automatically be included in the default
+    set of :search_columns.
+  :include => an array of tables to include in the joins, but only
+    for joining. (Searchable fields will not automatically be included.)
+  :conditions => a string or array of additional conditions (constraints)
+  :offset => paging offset (integer) (if will-paginate plugin is not present)
+  :limit => number of rows to return (integer) (if will-paginate plugin is not present)
+  :page => paging offset (integer) (if will-paginate plugin is present)
+  :per_page => number of rows to return (integer) (if will-paginate plugin is present)
+  :order => sort order (order_by SQL snippet)
 
 
 Example
 =======
 
-Example goes here.
+class Manufacturer < ActiveRecord::Base
+  searches_on :name
+end
+
+-------
+
+class Product < ActiveRecord::Base
+  belongs_to :manufacturer
+  searches_on :name, :description
+end
+
+-------
+
+Product.search('ruby rails', :search_include => [:manufacturer], :conditions => ['product.created_at > ?', 3.days.ago])
 
 
-Copyright (c) 2008 [name of plugin creator], released under the MIT license
+Copyright (c) 2008 [name of Glenn Powell], released under the MIT license
