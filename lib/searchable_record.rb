@@ -65,12 +65,13 @@ module SearchableRecord
         fields.map! { |field| "lower(#{field})" }
       end
 
-      condition_list = []
-      condition_list << build_text_condition(fields, text) unless text.blank?
+      conditions_list = []
+      conditions_list << build_text_condition(fields, text) unless text.blank?
       conditions_list << options[:conditions] if options[:conditions] && options[:conditions].is_a?(String)
       conditions_list << options[:conditions].first if options[:conditions].is_a?(Array)
-      conditions = condition_list.join(" AND ")
+      conditions = conditions_list.join(" AND ")
       conditions = options[:conditions][ 1, options[:conditions].length ].unshift(conditions) if options[:conditions].is_a?(Array)
+  logger.info("COND=#{conditions.inspect}")
 
       includes = search_includes.dup
       includes << options[:include] if options[:include]
