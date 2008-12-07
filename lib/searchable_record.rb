@@ -39,7 +39,7 @@ module SearchableRecord
     def searchable_fields_in_associations(tables)
       fields = []
 
-      if not tables.empty?
+      unless tables.empty?
         tables.each do |table, assocs|
           if table.kind_of? Hash
             fields += searchable_fields_in_associations(table)
@@ -71,7 +71,6 @@ module SearchableRecord
       conditions_list << options[:conditions].first if options[:conditions].is_a?(Array)
       conditions = conditions_list.join(" AND ")
       conditions = options[:conditions][ 1, options[:conditions].length ].unshift(conditions) if options[:conditions].is_a?(Array)
-  logger.info("COND=#{conditions.inspect}")
 
       includes = search_includes.dup
       includes << options[:include] if options[:include]
