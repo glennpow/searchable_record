@@ -1,24 +1,26 @@
 module SearchableRecord
   def self.included(base)
-    base.extend(MacroMethods)              
+    base.extend(MacroMethods)
   end
   
   module MacroMethods
     def searches_on(*args)
-      write_inheritable_attribute(:local_searchable_fields, args.collect { |f| f.to_s }) if args.any? && args.first != :all
-
       unless self.is_a? SearchableRecord::ClassMethods
         extend SearchableRecord::ClassMethods
         class_eval do
           include SearchableRecord::InstanceMethods
         end
       end
+
+      self.local_searchable_fields << args.collect { |f| f.to_s } if args.any? && args.first != :all
     end
   end
   
   module ClassMethods
     def local_searchable_fields
-      read_inheritable_attribute(:local_searchable_fields)
+      fields = read_inheritable_attribute(:local_searchable_fields)
+      write_inheritable_attribute(:local_searchable_fields, fields = []) if fields.nil?
+      fields
     end
 
     def searchable_fields(tables = nil)
@@ -338,4 +340,4 @@ module SearchableRecord
   end
 end
 
-ActiveRecord::Base.send(:include, SearchableRecord)
+ActiveRecord::Base.send(:include, SearchableRecord) if defined?(ActiveRecord::Base)
