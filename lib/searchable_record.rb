@@ -12,7 +12,7 @@ module SearchableRecord
         end
       end
 
-      self.local_searchable_fields << args.collect { |f| f.to_s } if args.any? && args.first != :all
+      self.local_searchable_fields + args.collect { |f| f.to_s } if args.any? && args.first != :all
     end
   end
   
