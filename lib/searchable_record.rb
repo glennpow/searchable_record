@@ -7,12 +7,9 @@ module SearchableRecord
     def searches_on(*args)
       unless self.is_a? SearchableRecord::ClassMethods
         extend SearchableRecord::ClassMethods
-        class_eval do
-          include SearchableRecord::InstanceMethods
-        end
       end
 
-      self.local_searchable_fields + args.collect { |f| f.to_s } if args.any? && args.first != :all
+      self.local_searchable_fields.concat(args.map(&:to_s)) if args.any? && args.first != :all
     end
   end
   
@@ -25,7 +22,7 @@ module SearchableRecord
 
     def searchable_fields(tables = nil)
       fields = read_inheritable_attribute(:local_searchable_fields)
-      if fields.nil?
+      if fields.blank?
         fields = []
         string_columns = self.columns.select { |c| c.type == :text or c.type == :string }
         fields = string_columns.collect { |c| c.name }
@@ -59,20 +56,34 @@ module SearchableRecord
       search_includes = options[:search_include] ? [ options[:search_include] ].flatten : []
 
       fields = searchable_fields(search_includes)
-      fields &= options[:only] if options[:only]
-      fields -= options[:except] if options[:except]
+      fields &= options[:only].map(&:to_s) if options[:only]
+      fields -= options[:except].map(&:to_s) if options[:except]
 
       unless options[:case_sensitive]
         text.downcase!
         fields.map! { |field| "lower(#{field})" }
       end
 
-      conditions_list = []
-      conditions_list << build_text_condition(fields, text) unless text.blank?
-      conditions_list << options[:conditions] if options[:conditions] && options[:conditions].is_a?(String)
-      conditions_list << options[:conditions].first if options[:conditions].is_a?(Array)
-      conditions = conditions_list.join(" AND ")
-      conditions = options[:conditions][ 1, options[:conditions].length ].unshift(conditions) if options[:conditions].is_a?(Array)
+      text_conditions = text.blank? || fields.blank? ? nil : build_text_condition(fields, text)
+      if text_conditions
+        conditions = case options[:conditions]
+        when String
+          "#{text_conditions} AND #{options[:conditions]}"
+        when Array
+          options[:conditions][ 1, options[:conditions].length ].unshift("#{text_conditions} AND #{options[:conditions].first}")
+        when Hash
+          options[:conditions].values.unshift(([ text_conditions ] + options[:conditions].keys.map { |key| "#{key} = ?" }).join(" AND "))
+        else
+          text_conditions
+        end
+      else
+        conditions = options[:conditions]
+      end
+logger.info("fields=#{fields.inspect}")
+logger.info("text=#{text}")
+logger.info("text_conditions=#{text_conditions.inspect}")
+logger.info("options[:conditions]=#{options[:conditions].inspect}")
+logger.info("conditions=#{conditions.inspect}")
 
       includes = search_includes.dup
       includes << options[:include] if options[:include]
@@ -319,24 +330,21 @@ module SearchableRecord
           # assert tree[1].kind_of?(String)
         "(" +
         fields.map { |f|
-          "(#{f} is null or #{f} not like #{sanitize('%'+sql_escape(tree[1])+'%')})" 
+          "(#{f} is null or #{f} not like #{sanitize('%%'+sql_escape(tree[1])+'%%')})"
         }.join(" and ") +
-          ")" 
+          ")"
       else
         "(" +
         fields.map { |f|
-          "#{f} like #{sanitize('%'+sql_escape(token)+'%')}" 
+          "#{f} like #{sanitize('%%'+sql_escape(token)+'%%')}"
         }.join(" or ") +
-          ")" 
+          ")"
       end
     end
 
     def build_text_condition(fields, text)
       build_tc_from_tree(fields, demorganize(parse(text)))
     end
-  end
-
-  module InstanceMethods
   end
 end
 
